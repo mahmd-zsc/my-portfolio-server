@@ -1,28 +1,18 @@
-let asyncHandler = require("express-async-handler");
-const {
-  Skill,
-  validateCreateSkill,
-  validateUpdateSkill,
-} = require("../modules/Skill");
-const path = require("path");
-const fs = require("fs");
-
-const { cloudinaryUploadImage } = require("../utils/cloudinary");
+const asyncHandler = require("express-async-handler");
+const { Skill, validateCreateSkill, validateUpdateSkill } = require("../modules/Skill");
 
 /**
  * @desc    Get All Skills
  * @route   /api/skills/
- * @method  Get
+ * @method  GET
  * @access  public
  */
-
-let getAllSkills = asyncHandler(async (req, res) => {
-  let skills = await Skill.find();
-
-  if (skills) {
+const getAllSkills = asyncHandler(async (req, res) => {
+  const skills = await Skill.find();
+  if (skills.length > 0) {
     return res.status(200).json(skills);
   }
-  res.status(404).json({ message: "Not found" });
+  res.status(404).json({ message: "No skills found" });
 });
 
 /**
@@ -31,59 +21,44 @@ let getAllSkills = asyncHandler(async (req, res) => {
  * @method  POST
  * @access  Private
  */
-let createSkill = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No image provided" });
-  }
-
-  let { error } = validateCreateSkill(req.body);
+const createSkill = asyncHandler(async (req, res) => {
+  const { error } = validateCreateSkill(req.body);
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  let skills = await Skill.find({ title: req.body.title });
-  if (skills.length > 0) {
+  // Check if the skill already exists
+  const existingSkill = await Skill.findOne({ title: req.body.title });
+  if (existingSkill) {
     return res.status(400).json({ message: "This skill already exists." });
   }
 
-  const imagePath = path.join(__dirname, `../images/${req.file.filename}`);
-  let result = await cloudinaryUploadImage(imagePath);
-
-  // Remove the image from the local images folder after upload
-  if (result) {
-    fs.unlinkSync(imagePath);
-  }
-
-  let skill = new Skill({
+  // Create and save new skill
+  const skill = new Skill({
     title: req.body.title,
-    image: {
-      url: result ? result.secure_url : "",
-      public_id: result ? result.public_id : null,
-    },
+    color: req.body.color,
+    link: req.body.link,
   });
 
   await skill.save();
-  res.status(200).json({ message: "The skill has been created!" });
+  res.status(201).json({ message: "The skill has been created!" });
 });
 
 /**
  * @desc    Delete a Skill
  * @route   /api/skills/:id
- * @method  Delete
- * @access  private
+ * @method  DELETE
+ * @access  Private
  */
+const deleteSkill = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-let deleteSkill = asyncHandler(async (req, res) => {
-  let { id } = req.params;
-
-  let skill = await Skill.findById(id);
-
+  const skill = await Skill.findById(id);
   if (!skill) {
-    return res.status(400).json({ message: "This skill ID is not found" });
+    return res.status(404).json({ message: "This skill ID is not found" });
   }
 
   await Skill.findByIdAndDelete(id);
-
   res.status(200).json({ message: "This skill has been deleted!" });
 });
 
