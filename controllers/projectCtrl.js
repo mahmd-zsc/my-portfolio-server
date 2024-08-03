@@ -14,14 +14,34 @@ const fs = require("fs");
  * @access  Public
  */
 let getAllProjects = asyncHandler(async (req, res) => {
-  let projects = await Project.find().populate("skills");
+  let projects = await Project.find();
 
   if (projects) {
     return res.status(200).json(projects);
   }
   res.status(404).json({ message: "Not found" });
 });
+/**
+ * @desc    Get Project by ID
+ * @route   /api/projects/:id
+ * @method  GET
+ * @access  Public
+ */
+let getProjectById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
+  // Validate the ID format if necessary
+  if (!id) {
+    return res.status(400).json({ message: "Project ID is required" });
+  }
+
+  let project = await Project.findById(id).populate("skills");
+
+  if (project) {
+    return res.status(200).json(project);
+  }
+  res.status(404).json({ message: "Project not found" });
+});
 /**
  * @desc    Create a Project
  * @route   /api/projects/
@@ -29,8 +49,10 @@ let getAllProjects = asyncHandler(async (req, res) => {
  * @access  Private
  */
 let createProject = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No image provided" });
+  if (!req.files || !req.files.small || !req.files.large) {
+    return res
+      .status(400)
+      .json({ message: "Both small and large images are required" });
   }
 
   let { error } = validateCreateProject(req.body);
@@ -38,19 +60,38 @@ let createProject = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const imagePath = path.join(__dirname, `../images/${req.file.filename}`);
-  let result = await cloudinaryUploadImage(imagePath);
+  const smallImagePath = path.join(
+    __dirname,
+    `../images/${req.files.small[0].filename}`
+  );
+  const largeImagePath = path.join(
+    __dirname,
+    `../images/${req.files.large[0].filename}`
+  );
 
-  // Remove the image from the local images folder after upload
-  if (result) {
-    fs.unlinkSync(imagePath);
+  let smallImageResult = await cloudinaryUploadImage(smallImagePath);
+  let largeImageResult = await cloudinaryUploadImage(largeImagePath);
+
+  // Remove the images from the local images folder after upload
+  if (smallImageResult) {
+    fs.unlinkSync(smallImagePath);
   }
+  if (largeImageResult) {
+    fs.unlinkSync(largeImagePath);
+  }
+
   let project = new Project({
     title: req.body.title,
     description: req.body.description,
     image: {
-      url: result ? result.secure_url : "",
-      public_id: result ? result.public_id : null,
+      small: {
+        url: smallImageResult ? smallImageResult.secure_url : "",
+        publicId: smallImageResult ? smallImageResult.public_id : null,
+      },
+      large: {
+        url: largeImageResult ? largeImageResult.secure_url : "",
+        publicId: largeImageResult ? largeImageResult.public_id : null,
+      },
     },
     githubLink: req.body.githubLink,
     appLink: req.body.appLink,
@@ -58,7 +99,9 @@ let createProject = asyncHandler(async (req, res) => {
   });
 
   await project.save();
-  res.status(200).json("this project has been created!");
+  res
+    .status(201)
+    .json({ message: "Project has been created successfully", project });
 });
 
 /**
@@ -85,4 +128,5 @@ module.exports = {
   getAllProjects,
   createProject,
   deleteProject,
+  getProjectById,
 };

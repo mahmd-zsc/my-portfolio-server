@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Joi = require("joi");
-const { Skill } = require("./Skill"); // Import the Skill model
+const { Skill } = require("./Skill");
 
 const projectSchema = new mongoose.Schema({
   title: {
@@ -13,10 +13,19 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
   image: {
-    type: Object,
-    default: {
-      url: "",
-      publicId: null,
+    small: {
+      type: Object,
+      default: {
+        url: "",
+        publicId: null,
+      },
+    },
+    large: {
+      type: Object,
+      default: {
+        url: "",
+        publicId: null,
+      },
     },
   },
   githubLink: {
@@ -35,10 +44,8 @@ const projectSchema = new mongoose.Schema({
   ],
 });
 
-// Create the Project model
 const Project = mongoose.model("Project", projectSchema);
 
-// Validation schema for creating a project
 const validateCreateProject = (obj) => {
   const schema = Joi.object({
     title: Joi.string().required(),
@@ -50,7 +57,6 @@ const validateCreateProject = (obj) => {
   return schema.validate(obj);
 };
 
-// Validation schema for updating a project
 const validateUpdateProject = (obj) => {
   const schema = Joi.object({
     title: Joi.string(),

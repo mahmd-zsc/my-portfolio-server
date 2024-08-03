@@ -3,6 +3,7 @@ const {
   getAllProjects,
   createProject,
   deleteProject,
+  getProjectById,
 } = require("../controllers/projectCtrl");
 const { imageUpload } = require("../middleware/uploadImage");
 let router = express.Router();
@@ -12,6 +13,6 @@ router
   .get(getAllProjects)
   .post(imageUpload.single("image"), createProject);
 
-router.route("/:id").delete(deleteProject);
+router.route("/:id").delete(deleteProject).get(getProjectById);
 
 module.exports = router;
